@@ -1,0 +1,87 @@
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Validating JSON in your APIs</title><meta name="generator" content="Hovercraft! 1.0 http://regebro.github.com/hovercraft"></meta><meta name="author" content="Eric Casteleijn"></meta><meta name="description" content="Using val to validate JSON objects in your APIs."></meta><link rel="stylesheet" href="css/hovercraft.css" media="all"></link><link rel="stylesheet" href="css/impressConsole.css" media="all"></link><link rel="stylesheet" href="css/highlight.css" media="all"></link><link rel="stylesheet" href="presentation.css" media="screen,projection"></link></head><body class="impress-not-supported"><div id="impress"><div class="step step-level-1" step="0" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="0" data-y="0" data-z="0"><h1 id="validating-json-in-your-apis">Validating JSON in your APIs</h1><p>&lt;<a href="http://github.com/thisfred/val">http://github.com/thisfred/val</a>&gt;</p><p>Eric Casteleijn</p><p><a href="mailto:thisfred@gmail.com">thisfred@gmail.com</a> | <a href="mailto:ericc@simple.com">ericc@simple.com</a> | @thisfred</p></div><div class="step step-level-1" step="1" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="1600" data-y="0" data-z="0"><p>Let's say we have a REST application for storing and managing todo items.</p><p>An example todo item might look like this:</p><pre class="highlight code python"><span class="p">{</span><span class="s">"task"</span><span class="p">:</span> <span class="s">"shave yak"</span><span class="p">,</span>
+ <span class="s">"priority"</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span></pre></div><div class="step step-level-1" step="2" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="3200" data-y="0" data-z="0"><p>Straw Man example:</p><pre class="highlight code python"><span class="k">def</span> <span class="nf">post_todo</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="n">todo</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">json</span>
+    <span class="k">if</span> <span class="s">'task'</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s">"Missing field 'task'."</span><span class="p">)</span>
+
+    <span class="n">value</span> <span class="o">=</span> <span class="n">todo</span><span class="p">[</span><span class="s">'task'</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s">"Value of field 'task' is of wrong type."</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s">'priority'</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s">"Missing field 'priority'."</span><span class="p">)</span>
+
+    <span class="n">value</span> <span class="o">=</span> <span class="n">todo</span><span class="p">[</span><span class="s">'priority'</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s">"Value of field 'priority' is of wrong type."</span><span class="p">)</span>
+
+    <span class="c"># Actually do something with `todo`.</span></pre><p>And now do the same with small variations for PUT, DELETE, and any other
+endpoints that accept (lists of) the same type. And then for all other types of
+objects your application needs to be able to understand.</p></div><div class="step step-level-1" step="3" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="4800" data-y="0" data-z="0"><p>Same functionality using val:</p><pre class="highlight code python"><span class="n">TODO_SCHEMA</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span>
+    <span class="s">'task'</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="s">'priority'</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+
+<span class="k">def</span> <span class="nf">post_todo</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">todo</span> <span class="o">=</span> <span class="n">TODO_SCHEMA</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">json</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">NotValid</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">BadRequest</span><span class="o">.</span><span class="n">from</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+    <span class="c"># Actually do something with `todo`.</span></pre><ul><li>Declare schemas in a way that resembles valid input.</li><li>Less logic, less repetition within handlers.</li><li>Reusable and composable schemas.</li></ul></div><div class="step step-level-1" step="4" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="6400" data-y="0" data-z="0"><p>Can be further refactored, for instance:</p><pre class="highlight code python"><span class="k">class</span> <span class="nc">HandlerBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">schema</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">get_validated_json</span><span class="p">(</span><span class="n">unvalidated</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">unvalidated</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">NotValid</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">BadRequest</span><span class="o">.</span><span class="n">from</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">TodoHandler</span><span class="p">(</span><span class="n">HandlerBase</span><span class="p">):</span>
+
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">TODO_SCHEMA</span>
+
+    <span class="k">def</span> <span class="nf">handle</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+        <span class="n">todo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_validated_json</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">json</span><span class="p">)</span>
+        <span class="c"># Actually do something with `todo`.</span></pre></div><div class="step step-level-1" step="5" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="8000" data-y="0" data-z="0"><pre class="highlight code python"><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">val</span> <span class="kn">import</span> <span class="n">Schema</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">todo_schema</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span>
+<span class="o">...</span>     <span class="s">'task'</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="o">...</span>     <span class="s">'priority'</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">todo_schema</span><span class="o">.</span><span class="n">validate</span><span class="p">({</span><span class="s">'task'</span><span class="p">:</span> <span class="s">'shave yak'</span><span class="p">})</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+    <span class="o">...</span>
+<span class="n">val</span><span class="o">.</span><span class="n">NotValid</span><span class="p">:</span> <span class="n">missing</span> <span class="n">key</span><span class="p">:</span> <span class="s">'priority'</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="n">todo_schema</span><span class="o">.</span><span class="n">validate</span><span class="p">({</span><span class="s">'task'</span><span class="p">:</span> <span class="s">'paint shed'</span><span class="p">,</span> <span class="s">'priority'</span><span class="p">:</span> <span class="s">'high'</span><span class="p">})</span>
+<span class="n">Traceback</span> <span class="p">(</span><span class="n">most</span> <span class="n">recent</span> <span class="n">call</span> <span class="n">last</span><span class="p">):</span>
+    <span class="o">...</span>
+<span class="n">val</span><span class="o">.</span><span class="n">NotValid</span><span class="p">:</span> <span class="s">'priority'</span><span class="p">:</span> <span class="s">'high'</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">of</span> <span class="nb">type</span> <span class="o">&lt;</span><span class="k">class</span> <span class="err">'</span><span class="nc">int</span><span class="s">'&gt;</span></pre><p>Sensible error messages, that can be forwarded to clients.</p></div><div class="step step-level-1" step="6" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="9600" data-y="0" data-z="0"><p>Schemas can be shared between python libraries / services, and published as
+part of the documentation to aid client developers. For clients in other
+languages, teleport<a class="footnoteref" id="footnote-backref-id1" href="#footnote-id2">1</a> schemas can be published, and kept in sync with the
+code through doctests:</p><pre class="highlight code python"><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">val</span> <span class="kn">import</span> <span class="n">tp</span>
+
+<span class="o">&gt;&gt;&gt;</span> <span class="k">print</span><span class="p">(</span><span class="n">tp</span><span class="o">.</span><span class="n">document</span><span class="p">(</span><span class="n">todo_schema</span><span class="p">))</span>
+<span class="p">{</span>
+  <span class="s">"Struct"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="s">"optional"</span><span class="p">:</span> <span class="p">{},</span>
+    <span class="s">"required"</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s">"priority"</span><span class="p">:</span> <span class="s">"Integer"</span><span class="p">,</span>
+      <span class="s">"task"</span><span class="p">:</span> <span class="s">"String"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre><div class="footnote" id="footnote-id2"><a class="footnotereturn" href="#footnote-backref-id1" title="return to content">1:</a><p>&lt;<a href="http://www.teleport-json.org/">http://www.teleport-json.org/</a>&gt;</p></div></div><div class="step step-level-1" step="7" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="11200" data-y="0" data-z="0"><p>Roadmap: Automated backwards compatibility checking. (Could look something like
+this.  100% hand waving.)</p><pre class="highlight code python"><span class="kn">from</span> <span class="nn">val</span> <span class="kn">import</span> <span class="n">bc</span>
+
+<span class="n">schema_v1</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span><span class="s">'task'</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="s">'priority'</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+<span class="n">incompatible_v2</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span><span class="s">'task'</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+<span class="n">bc</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">incompatible_v2</span><span class="p">,</span> <span class="n">schema_v1</span><span class="p">)</span>
+<span class="c"># ^ would return False, because `priority` is suddenly no longer valid.</span>
+
+<span class="n">combatible_v2</span> <span class="o">=</span> <span class="n">Schema</span><span class="p">({</span>
+    <span class="s">'task'</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">(</span><span class="s">'priority'</span><span class="p">):</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">(</span><span class="s">'status'</span><span class="p">):</span> <span class="nb">str</span><span class="p">})</span>
+<span class="n">bc</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">combatible_v2</span><span class="p">,</span> <span class="n">schema_v1</span><span class="p">)</span>
+<span class="c"># ^ would return True, because changing a field from required to</span>
+<span class="c"># optional is backwards compatible, as is adding new optional fields.</span></pre></div></div><div id="hovercraft-help"><table><tr><th>Space</th><td>Forward</td></tr><tr><th>Right, Down, Page Down</th><td>Next slide</td></tr><tr><th>Left, Up, Page Up</th><td>Previous slide</td></tr><tr><th>P</th><td>Open presenter console</td></tr><tr><th>H</th><td>Toggle this help</td></tr></table></div><script type="text/javascript" src="js/impress.js"></script><script type="text/javascript" src="js/impressConsole.js"></script><script type="text/javascript" src="js/hovercraft.js"></script></body></html>
